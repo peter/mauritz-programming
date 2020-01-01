@@ -154,6 +154,27 @@
         return { rows, rowSums, columnSums };
       }
 
+      function getMatrix(table) {
+        const variables = orderedVariables(parseInt(table.rows.length));
+        const rows = [];
+        const values = [];
+        const getMatrixRow = letters => {
+          return variables.map(
+            letter => letters.filter(l => l == letter).length
+          );
+        };
+        for (const [index, row] of table.rows.entries()) {
+          rows.push(getMatrixRow(row));
+          values.push(table.rowSums[index]);
+        }
+        for (const [index, sum] of table.columnSums.entries()) {
+          const column = table.rows.map(row => row[index]);
+          rows.push(getMatrixRow(column));
+          values.push(sum);
+        }
+        return { variables, rows, values };
+      }
+
       function getSolutionVariables(solution) {
         const solutionByValue = invertObject(solution);
         return Object.keys(solutionByValue)
@@ -164,11 +185,13 @@
 
       function initState(nVariables) {
         const variables = shuffle(orderedVariables(parseInt(nVariables)));
+        const table = getTable(variables);
         STATE = {
           nVariables,
           variables,
           solution: {},
-          table: getTable(variables)
+          table,
+          matrix: getMatrix(table)
         };
       }
 
@@ -297,12 +320,43 @@
         return solution;
       }
 
+      function renderMatrix(state, config) {
+        const table = element("table", {
+          id: "matrix",
+          border: "1",
+          cellspacing: "10",
+          cellpadding: "10",
+          style: "margin-top: 20px"
+        });
+        const renderCell = label => {
+          const td = element("td");
+          td.innerHTML = label;
+          return td;
+        };
+        const renderRow = rowLabels => {
+          const tr = element("tr");
+          for (const [index, label] of rowLabels.entries()) {
+            const td = renderCell(label);
+            tr.appendChild(td);
+          }
+          table.appendChild(tr);
+          return tr;
+        };
+        for (const [index, row] of state.matrix.rows.entries()) {
+          const tr = renderRow(row);
+          const td = renderCell(state.matrix.values[index]);
+          tr.appendChild(td);
+        }
+        return table;
+      }
+
       function renderContents(state, config) {
         const contents = document.getElementById("contents");
         contents.innerHTML = "";
         contents.appendChild(renderParameters(state, config));
         contents.appendChild(renderTable(state, config));
         contents.appendChild(renderSolution(state, config));
+        contents.appendChild(renderMatrix(state, config));
         console.log("pm debug state", state);
       }
 
