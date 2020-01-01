@@ -1,0 +1,331 @@
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Matteutmaning - Tabell med Bokstäver</title>
+  </head>
+  <body>
+    <script>
+      function invertObject(obj) {
+        return Object.entries(obj).reduce((acc, [key, value]) => {
+          acc[value] = key;
+          return acc;
+        }, {});
+      }
+
+      function uniq(array) {
+        const seen = {};
+        const result = [];
+        for (const item of array) {
+          if (!seen[item]) result.push(item);
+          seen[item] = true;
+        }
+        return result;
+      }
+
+      function randomIndex(list) {
+        return Math.round(Math.random() * (list.length - 1));
+      }
+
+      function randomList(list) {
+        return list.map(v => list[randomIndex(list)]);
+      }
+
+      function shuffle(list) {
+        const remaining = [...list];
+        const result = [];
+        while (remaining.length > 0) {
+          const index = randomIndex(remaining);
+          result.push(remaining[index]);
+          remaining.splice(index, 1);
+        }
+        return result;
+      }
+
+      function sum(list) {
+        return list.reduce((acc, value) => acc + value, 0);
+      }
+
+      function range(length) {
+        const result = [];
+        for (let i = 0; i < length; ++i) {
+          result.push(i);
+        }
+        return result;
+      }
+
+      function variableValue(variables, variable) {
+        return variables.findIndex(v => v === variable) + 1;
+      }
+
+      function orderedVariables(length) {
+        return range(length).map(index => String.fromCharCode(65 + index));
+      }
+
+      function isCorrectSolution(variables, table) {
+        const value = v => variableValue(variables, v);
+        for (let rowIndex = 0; rowIndex < table.rows.length; ++rowIndex) {
+          if (table.rowSums[rowIndex] !== sum(table.rows[rowIndex].map(value)))
+            return false;
+        }
+        for (
+          let columnIndex = 0;
+          columnIndex < table.rows.length;
+          ++columnIndex
+        ) {
+          if (
+            table.columnSums[columnIndex] !==
+            sum(table.rows.map(row => value(row[columnIndex])))
+          )
+            return false;
+        }
+        return true;
+      }
+
+      function getSolutionStatuses(state) {
+        const value = v => state.solution[v] || 0;
+        const table = state.table;
+        const getStatus = (correctSum, solutionSum, nMissing) => {
+          if (Object.keys(state.solution).length === 0) return undefined;
+          if (nMissing > 0) {
+            if (
+              solutionSum > correctSum ||
+              correctSum - solutionSum < nMissing
+            ) {
+              return "incorrect";
+            } else {
+              return "potential";
+            }
+          } else {
+            return solutionSum === correctSum ? "correct" : "incorrect";
+          }
+        };
+        const rowStatuses = {};
+        for (let rowIndex = 0; rowIndex < table.rows.length; ++rowIndex) {
+          const values = table.rows[rowIndex].map(value);
+          const nMissing = values.filter(v => v === 0).length;
+          rowStatuses[rowIndex] = getStatus(
+            table.rowSums[rowIndex],
+            sum(values),
+            nMissing
+          );
+        }
+
+        const columnStatuses = {};
+        for (
+          let columnIndex = 0;
+          columnIndex < table.rows.length;
+          ++columnIndex
+        ) {
+          const values = table.rows.map(row => value(row[columnIndex]));
+          const nMissing = values.filter(v => v === 0).length;
+          columnStatuses[columnIndex] = getStatus(
+            table.columnSums[columnIndex],
+            sum(values),
+            nMissing
+          );
+        }
+
+        return { rowStatuses, columnStatuses };
+      }
+
+      function getSolutionStatusColor(status) {
+        return {
+          potential: "yellow",
+          correct: "green",
+          incorrect: "red"
+        }[status];
+      }
+
+      function element(name, attributes = {}) {
+        const el = document.createElement(name);
+        for (const [key, value] of Object.entries(attributes)) {
+          el.setAttribute(key, value);
+        }
+        return el;
+      }
+
+      function getTable(variables) {
+        const value = v => variableValue(variables, v);
+        let rows = variables.map(() => randomList(variables));
+        const rowSums = rows.map(row => sum(row.map(value)));
+        const columnSums = variables.map((_, columnIndex) =>
+          sum(rows.map(row => value(row[columnIndex])))
+        );
+        return { rows, rowSums, columnSums };
+      }
+
+      function getSolutionVariables(solution) {
+        const solutionByValue = invertObject(solution);
+        return Object.keys(solutionByValue)
+          .map(v => parseInt(v))
+          .sort()
+          .map(v => solutionByValue[v]);
+      }
+
+      function initState(nVariables) {
+        const variables = shuffle(orderedVariables(parseInt(nVariables)));
+        STATE = {
+          nVariables,
+          variables,
+          solution: {},
+          table: getTable(variables)
+        };
+      }
+
+      function renderParameters(state, config) {
+        const contents = document.getElementById("contents");
+        const parameters = element("div", {
+          id: "parameters",
+          style: "margin-bottom: 10px"
+        });
+        const select = element("select");
+        const updateNVariables = () => {
+          initState(parseInt(select.value));
+          render();
+        };
+        for (const value of config.nVariables.range) {
+          const option = element("option");
+          option.value = value;
+          option.text = value;
+          if (value === state.nVariables)
+            option.setAttribute("selected", "selected");
+          select.appendChild(option);
+        }
+        select.addEventListener("change", () => updateNVariables());
+        parameters.appendChild(select);
+        return parameters;
+      }
+
+      function renderTable(state, config) {
+        const table = element("table", {
+          id: "table",
+          border: "1",
+          cellspacing: "10",
+          cellpadding: "10"
+        });
+        const { rowStatuses, columnStatuses } = getSolutionStatuses(state);
+        const renderCell = (label, status = null) => {
+          const style =
+            status && `background-color: ${getSolutionStatusColor(status)}`;
+          const td = element("td", { style });
+          td.innerHTML = label;
+          return td;
+        };
+        const renderRow = (rowLabels, statuses = {}) => {
+          const tr = element("tr");
+          for (const [index, label] of rowLabels.entries()) {
+            const td = renderCell(label, statuses[index]);
+            tr.appendChild(td);
+          }
+          table.appendChild(tr);
+          return tr;
+        };
+        for (const [index, row] of state.table.rows.entries()) {
+          const tr = renderRow(row);
+          const td = renderCell(state.table.rowSums[index], rowStatuses[index]);
+          tr.appendChild(td);
+        }
+        renderRow(state.table.columnSums, columnStatuses);
+        return table;
+      }
+
+      function isValidSolution(state) {
+        const numbersValid = Object.values(state.solution).every(value => {
+          const intValue = parseInt(value);
+          return (
+            !isNaN(intValue) && intValue >= 1 && intValue <= state.nVariables
+          );
+        });
+        const numbersUnique =
+          Object.values(state.solution).length ===
+          uniq(Object.values(state.solution)).length;
+        return numbersValid && numbersUnique;
+      }
+
+      function updateSolution(state, letter, value) {
+        if (value === "") {
+          delete state.solution[letter];
+        } else if (!isNaN(parseInt(value))) {
+          state.solution[letter] = parseInt(value);
+        }
+        const isComplete =
+          Object.keys(state.solution).length === state.nVariables;
+        if (isComplete && isValidSolution(state)) {
+          const variables = getSolutionVariables(state.solution);
+          if (isCorrectSolution(variables, state.table)) {
+            // alert("Rätt lösning!!");
+          }
+        }
+        render();
+      }
+
+      function solutionRenderColor(state) {
+        const getStatus = () => {
+          const isEmpty = Object.keys(state.solution).length === 0;
+          const isComplete =
+            Object.keys(state.solution).length === state.nVariables;
+          const isValid = isValidSolution(state);
+          if (isEmpty) return "empty";
+          if (!isComplete && isValid) return "potential";
+          return isValid ? "correct" : "incorrect";
+        };
+        return getSolutionStatusColor(getStatus());
+      }
+
+      function renderSolution(state, config) {
+        const bgColor = solutionRenderColor(state);
+        const solution = element("div", {
+          style: `margin-top: 10px;`
+        });
+        const letters = orderedVariables(state.nVariables);
+        for (const [index, letter] of letters.entries()) {
+          const div = element("div", {
+            style: `display: inline; margin-right: 10px;  background-color: ${bgColor}`
+          });
+          const id = `letter-${index}`;
+          const label = element("label", { for: id });
+          label.innerHTML = `${letter}=`;
+          div.appendChild(label);
+          const input = element("input", { id, size: "2" });
+          if (state.solution[letter]) input.value = state.solution[letter];
+          input.addEventListener("input", () =>
+            updateSolution(state, letters[index], input.value)
+          );
+          div.appendChild(input);
+          solution.appendChild(div);
+        }
+        return solution;
+      }
+
+      function renderContents(state, config) {
+        const contents = document.getElementById("contents");
+        contents.innerHTML = "";
+        contents.appendChild(renderParameters(state, config));
+        contents.appendChild(renderTable(state, config));
+        contents.appendChild(renderSolution(state, config));
+        console.log("pm debug state", state);
+      }
+
+      const CONFIG = {
+        nVariables: {
+          default: 4,
+          range: [3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+        }
+      };
+      let STATE = {};
+
+      function render() {
+        renderContents(STATE, CONFIG);
+      }
+
+      window.addEventListener("load", () => {
+        initState(CONFIG.nVariables.default);
+        render();
+      });
+    </script>
+
+    <h1>Matteutmaning - Tabell med Bokstäver</h1>
+    <div id="contents"></div>
+    <div id="debug"></div>
+  </body>
+</html>
