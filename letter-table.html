@@ -12,6 +12,24 @@
         }, {});
       }
 
+      function max(list) {
+        return list.reduce((acc, value) => (acc > value ? acc : value));
+      }
+
+      function swapItems(list, index1, index2) {
+        const result = [];
+        for (const [index, item] of list.entries()) {
+          if (index === index1) {
+            result.push(list[index2]);
+          } else if (index === index2) {
+            result.push(list[index1]);
+          } else {
+            result.push(item);
+          }
+        }
+        return result;
+      }
+
       function uniq(array) {
         const seen = {};
         const result = [];
@@ -175,6 +193,73 @@
         return { variables, rows, values };
       }
 
+      function gaussEliminate(matrix) {
+        let result = matrix;
+        let results = [result];
+        const nColumns = result.rows[0].length;
+        for (let rowIndex = 0; rowIndex < nColumns; ++rowIndex) {
+          // 1. Get maxRowIndex of column rowIndex
+          const column = result.rows.slice(rowIndex).map(r => r[rowIndex]);
+          const columnMax = max(column.map(Math.abs));
+          const maxColumnIndex = column.findIndex(
+            v => Math.abs(v) === columnMax
+          );
+          const maxRowIndex = maxColumnIndex + rowIndex;
+          // 2. Swap maxRowIndex with rowIndex row if maxRowIndex !== rowIndex
+          if (maxColumnIndex > -1 && maxRowIndex !== rowIndex) {
+            result = {
+              ...result,
+              description: `Swap row ${maxRowIndex} with row ${rowIndex} to get maximum pivot ${columnMax} for row ${rowIndex}`,
+              rows: swapItems(result.rows, rowIndex, maxRowIndex),
+              values: swapItems(result.values, rowIndex, maxRowIndex)
+            };
+            results.push(result);
+          }
+          // 3. Multiply rowIndex with 1/rowIndex,rowIndex to achieve diagonal of 1:s
+          const pivot = result.rows[rowIndex][rowIndex];
+          if (pivot === 0) continue;
+          if (pivot !== 1) {
+            const pivotRow = result.rows[rowIndex].map(v => v / pivot);
+            result = {
+              ...result,
+              description: `Multiply row ${rowIndex} with ${1 /
+                pivot} to get a pivot value of 1`,
+              rows: result.rows.map((r, i) => (i === rowIndex ? pivotRow : r)),
+              values: result.values.map((v, i) =>
+                i === rowIndex ? v / pivot : v
+              )
+            };
+            results.push(result);
+          }
+          // 4. Create zeros under the pivot
+          for (
+            let pivotIndex = rowIndex + 1;
+            pivotIndex < nColumns;
+            ++pivotIndex
+          ) {
+            const underPivotValue = result.rows[pivotIndex][rowIndex];
+            if (underPivotValue !== 0) {
+              const underPivotRow = result.rows[pivotIndex].map(
+                (v, i) => v - underPivotValue * result.rows[rowIndex][i]
+              );
+              result = {
+                ...result,
+                description: `Subtract row ${pivotIndex} with ${underPivotValue} times row ${rowIndex} to create a zero under the pivot at row ${pivotIndex}`,
+                rows: result.rows.map((r, i) =>
+                  i === pivotIndex ? underPivotRow : r
+                ),
+                values: result.values.map((v, i) =>
+                  i === pivotIndex ? v / underPivotValue : v
+                )
+              };
+              results.push(result);
+            }
+          }
+        }
+        // TODO: back substitution
+        return results;
+      }
+
       function getSolutionVariables(solution) {
         const solutionByValue = invertObject(solution);
         return Object.keys(solutionByValue)
@@ -320,13 +405,14 @@
         return solution;
       }
 
-      function renderMatrix(state, config) {
+      function renderMatrix(matrix) {
         const table = element("table", {
           id: "matrix",
           border: "1",
           cellspacing: "10",
           cellpadding: "10",
-          style: "margin-top: 20px"
+          style: "margin-top: 20px",
+          width: `${matrix.rows[0].length * 100}px`
         });
         const renderCell = label => {
           const td = element("td");
@@ -342,9 +428,16 @@
           table.appendChild(tr);
           return tr;
         };
-        for (const [index, row] of state.matrix.rows.entries()) {
+        if (matrix.description) {
+          const tr = element("tr");
+          const td = element("td", { colspan: matrix.rows[0].length });
+          td.innerHTML = matrix.description;
+          tr.appendChild(td);
+          table.appendChild(tr);
+        }
+        for (const [index, row] of matrix.rows.entries()) {
           const tr = renderRow(row);
-          const td = renderCell(state.matrix.values[index]);
+          const td = renderCell(matrix.values[index]);
           tr.appendChild(td);
         }
         return table;
@@ -356,7 +449,9 @@
         contents.appendChild(renderParameters(state, config));
         contents.appendChild(renderTable(state, config));
         contents.appendChild(renderSolution(state, config));
-        contents.appendChild(renderMatrix(state, config));
+        for (const result of gaussEliminate(state.matrix)) {
+          contents.appendChild(renderMatrix(result));
+        }
         console.log("pm debug state", state);
       }
 
