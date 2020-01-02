@@ -1,8 +1,20 @@
-<html>
+<!DOCTYPE html>
+<html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Matteutmaning - Tabell med Bokstäver</title>
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+
+    <link
+      rel="stylesheet"
+      href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css"
+      integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm"
+      crossorigin="anonymous"
+    />
+
+    <title>Math Problem - Variables in a Table</title>
   </head>
   <body>
     <script>
@@ -330,6 +342,12 @@
         return div;
       }
 
+      function renderHeader() {
+        const header = element("h1");
+        header.innerHTML = "Math Problem - Variables in a Table";
+        return header;
+      }
+
       function renderParameters(state, config) {
         const contents = document.getElementById("contents");
         const parameters = element("div", {
@@ -358,6 +376,7 @@
 
       function renderTable(state, config) {
         const table = element("table", {
+          class: "table",
           id: "table",
           border: "1",
           cellspacing: "10",
@@ -457,15 +476,26 @@
         return solution;
       }
 
+      function renderMatrixHeader() {
+        const header = element("h2");
+        header.innerHTML = "Linear Equations";
+        return header;
+      }
+
       function renderMatrix(matrix, previousMatrix = null) {
-        const container = element("div", { style: "max-width: 500px" });
+        const container = element("div");
+        if (matrix.description) {
+          const description = element("p");
+          description.innerHTML = matrix.description;
+          container.appendChild(description);
+        }
         const table = element("table", {
+          class: "table",
           id: "matrix",
           border: "1",
           cellspacing: "10",
           cellpadding: "10",
           style: "margin-top: 20px"
-          // width: `${matrix.rows[0].length * 100}px`
         });
         container.appendChild(table);
         const renderCell = (value, changed) => {
@@ -486,13 +516,6 @@
           table.appendChild(tr);
           return tr;
         };
-        if (matrix.description) {
-          const tr = element("tr");
-          const td = element("td", { colspan: matrix.rows[0].length });
-          td.innerHTML = matrix.description;
-          tr.appendChild(td);
-          table.appendChild(tr);
-        }
         for (const [index, row] of matrix.rows.entries()) {
           const previousRow = previousMatrix && previousMatrix.rows[index];
           const tr = renderRow(row, previousRow);
@@ -508,10 +531,12 @@
       function renderContents(state, config) {
         const contents = document.getElementById("contents");
         contents.innerHTML = "";
+        contents.appendChild(renderHeader());
         contents.appendChild(renderParameters(state, config));
         contents.appendChild(renderDescription(state, config));
         contents.appendChild(renderTable(state, config));
         contents.appendChild(renderSolution(state, config));
+        contents.appendChild(renderMatrixHeader());
         const matrixResults = gaussEliminate(state.matrix);
         for (const [index, result] of matrixResults.entries()) {
           contents.appendChild(renderMatrix(result, matrixResults[index - 1]));
@@ -536,8 +561,7 @@
       });
     </script>
 
-    <h1>Math Problem - Letters in a Table</h1>
-    <div id="contents"></div>
+    <div id="contents" class="container"></div>
     <div id="debug"></div>
   </body>
 </html>
