@@ -89,6 +89,15 @@
         return result;
       }
 
+      function isFullyReduced(matrix) {
+        const nColumns = matrix.rows[0].length;
+        return matrix.rows.slice(0, nColumns).every((row, rowIndex) =>
+          row.every((v, colIndex) => {
+            return rowIndex === colIndex ? v === 1 : v === 0;
+          })
+        );
+      }
+
       function variableValue(variables, variable) {
         return variables.findIndex(v => v === variable) + 1;
       }
@@ -97,8 +106,7 @@
         return range(length).map(index => String.fromCharCode(65 + index));
       }
 
-      function isCorrectSolution(variables, table) {
-        const value = v => variableValue(variables, v);
+      function isCorrectSolution(table, value) {
         for (let rowIndex = 0; rowIndex < table.rows.length; ++rowIndex) {
           if (table.rowSums[rowIndex] !== sum(table.rows[rowIndex].map(value)))
             return false;
@@ -164,11 +172,12 @@
         return { rowStatuses, columnStatuses };
       }
 
-      function getSolutionStatusColor(status) {
+      function getSolutionStatusClass(status) {
+        // https://getbootstrap.com/docs/4.0/utilities/colors/#background-color
         return {
-          potential: "yellow",
-          correct: "green",
-          incorrect: "red"
+          potential: "bg-warning",
+          correct: "bg-success",
+          incorrect: "bg-danger"
         }[status];
       }
 
@@ -306,7 +315,7 @@
             }
           }
         }
-        return results;
+        return { result, results };
       }
 
       function getSolutionVariables(solution) {
@@ -384,9 +393,8 @@
         });
         const { rowStatuses, columnStatuses } = getSolutionStatuses(state);
         const renderCell = (label, status = null) => {
-          const style =
-            status && `background-color: ${getSolutionStatusColor(status)}`;
-          const td = element("td", { style });
+          const className = status && getSolutionStatusClass(status);
+          const td = element("td", { class: className });
           td.innerHTML = label;
           return td;
         };
@@ -431,14 +439,11 @@
           Object.keys(state.solution).length === state.nVariables;
         if (isComplete && isValidSolution(state)) {
           const variables = getSolutionVariables(state.solution);
-          if (isCorrectSolution(variables, state.table)) {
-            // alert("Rätt lösning!!");
-          }
         }
         render();
       }
 
-      function solutionRenderColor(state) {
+      function solutionRenderClass(state) {
         const getStatus = () => {
           const isEmpty = Object.keys(state.solution).length === 0;
           const isComplete =
@@ -448,24 +453,25 @@
           if (!isComplete && isValid) return "potential";
           return isValid ? "correct" : "incorrect";
         };
-        return getSolutionStatusColor(getStatus());
+        return getSolutionStatusClass(getStatus());
       }
 
       function renderSolution(state, config) {
-        const bgColor = solutionRenderColor(state);
+        const className = solutionRenderClass(state);
         const solution = element("div", {
+          class: className,
           style: `margin-top: 10px;`
         });
         const letters = orderedVariables(state.nVariables);
         for (const [index, letter] of letters.entries()) {
           const div = element("div", {
-            style: `display: inline; margin-right: 10px;  background-color: ${bgColor}`
+            style: `display: inline; margin-right: 10px`
           });
           const id = `letter-${index}`;
           const label = element("label", { for: id });
           label.innerHTML = `${letter}=`;
           div.appendChild(label);
-          const input = element("input", { id, size: "2" });
+          const input = element("input", { id, size: "2", class: className });
           if (state.solution[letter]) input.value = state.solution[letter];
           input.addEventListener("input", () =>
             updateSolution(state, letters[index], input.value)
@@ -528,6 +534,35 @@
         return container;
       }
 
+      function renderMatrixStatus(state, matrix) {
+        const variables = orderedVariables(parseInt(state.table.rows.length));
+        const isReduced = isFullyReduced(matrix);
+        const isCorrect = isCorrectSolution(
+          state.table,
+          v => matrix.values[variables.indexOf(v)]
+        );
+        const className = isCorrect
+          ? "bg-success"
+          : isReduced
+          ? "bg-warning"
+          : "bg-danger";
+        const container = element("div", {
+          style: `margin-top: 20px`,
+          class: className
+        });
+        const reduced = element("div");
+        reduced.innerHTML = isReduced
+          ? "Matrix is in reduced row echelon form"
+          : "Matrix is not in reduced echelon form";
+        container.appendChild(reduced);
+        const correct = element("div");
+        correct.innerHTML = isCorrect
+          ? "Variable values are correct according to the row and columns sums in the table"
+          : "Correct variable values were not found by gaussian elimination";
+        container.appendChild(correct);
+        return container;
+      }
+
       function renderContents(state, config) {
         const contents = document.getElementById("contents");
         contents.innerHTML = "";
@@ -537,10 +572,11 @@
         contents.appendChild(renderTable(state, config));
         contents.appendChild(renderSolution(state, config));
         contents.appendChild(renderMatrixHeader());
-        const matrixResults = gaussEliminate(state.matrix);
-        for (const [index, result] of matrixResults.entries()) {
-          contents.appendChild(renderMatrix(result, matrixResults[index - 1]));
+        const gauss = gaussEliminate(state.matrix);
+        for (const [index, result] of gauss.results.entries()) {
+          contents.appendChild(renderMatrix(result, gauss.results[index - 1]));
         }
+        contents.appendChild(renderMatrixStatus(state, gauss.result));
       }
 
       const CONFIG = {
