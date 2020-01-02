@@ -198,14 +198,14 @@
         let results = [result];
         const nColumns = result.rows[0].length;
         for (let rowIndex = 0; rowIndex < nColumns; ++rowIndex) {
-          // 1. Get maxRowIndex of column rowIndex
+          // Get maxRowIndex of column rowIndex
           const column = result.rows.slice(rowIndex).map(r => r[rowIndex]);
           const columnMax = max(column.map(Math.abs));
           const maxColumnIndex = column.findIndex(
             v => Math.abs(v) === columnMax
           );
           const maxRowIndex = maxColumnIndex + rowIndex;
-          // 2. Swap maxRowIndex with rowIndex row if maxRowIndex !== rowIndex
+          // Swap maxRowIndex with rowIndex row if maxRowIndex !== rowIndex
           if (maxColumnIndex > -1 && maxRowIndex !== rowIndex) {
             result = {
               ...result,
@@ -215,7 +215,9 @@
             };
             results.push(result);
           }
-          // 3. Multiply rowIndex with 1/rowIndex,rowIndex to achieve diagonal of 1:s
+        }
+        for (let rowIndex = 0; rowIndex < nColumns; ++rowIndex) {
+          // Multiply rowIndex with 1/rowIndex,rowIndex to achieve diagonal of 1:s
           const pivot = result.rows[rowIndex][rowIndex];
           if (pivot === 0) continue;
           if (pivot !== 1) {
@@ -231,7 +233,7 @@
             };
             results.push(result);
           }
-          // 4. Create zeros under the pivot
+          // Create zeros under the pivot
           for (
             let pivotIndex = rowIndex + 1;
             pivotIndex < nColumns;
