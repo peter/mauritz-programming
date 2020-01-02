@@ -181,6 +181,8 @@
             letter => letters.filter(l => l == letter).length
           );
         };
+        rows.push(getMatrixRow(variables));
+        values.push(sum(variables.map(v => variableValue(variables, v))));
         for (const [index, row] of table.rows.entries()) {
           rows.push(getMatrixRow(row));
           values.push(table.rowSums[index]);
@@ -190,7 +192,11 @@
           rows.push(getMatrixRow(column));
           values.push(sum);
         }
-        return { variables, rows, values };
+        return {
+          description: "Matrix before gaussian elimination",
+          rows,
+          values
+        };
       }
 
       function gaussEliminate(matrix) {
@@ -258,7 +264,30 @@
             }
           }
         }
-        // TODO: back substitution
+        // Back substitution to create zeros above the pivots (diagonal) and yield the final result (if possible)
+        for (let rowIndex = nColumns - 1; rowIndex > 0; --rowIndex) {
+          for (let pivotIndex = rowIndex - 1; pivotIndex >= 0; --pivotIndex) {
+            const overPivotValue = result.rows[pivotIndex][rowIndex];
+            if (overPivotValue !== 0) {
+              const overPivotRow = result.rows[pivotIndex].map((v, i) =>
+                i === rowIndex ? 0 : v
+              );
+              result = {
+                ...result,
+                description: `Substitute value from row ${rowIndex} into row ${pivotIndex} to yield a zero above pivot (i.e. in cell ${pivotIndex}, ${rowIndex})`,
+                rows: result.rows.map((r, i) =>
+                  i === pivotIndex ? overPivotRow : r
+                ),
+                values: result.values.map((v, i) =>
+                  i === pivotIndex
+                    ? v - overPivotValue * result.values[rowIndex]
+                    : v
+                )
+              };
+              results.push(result);
+            }
+          }
+        }
         return results;
       }
 
@@ -407,7 +436,7 @@
         return solution;
       }
 
-      function renderMatrix(matrix) {
+      function renderMatrix(matrix, previousMatrix = null) {
         const table = element("table", {
           id: "matrix",
           border: "1",
@@ -416,15 +445,19 @@
           style: "margin-top: 20px",
           width: `${matrix.rows[0].length * 100}px`
         });
-        const renderCell = label => {
-          const td = element("td");
+        const renderCell = (label, changed) => {
+          const attributes = changed
+            ? { style: "background-color: lightgray" }
+            : {};
+          const td = element("td", attributes);
           td.innerHTML = label;
           return td;
         };
-        const renderRow = rowLabels => {
+        const renderRow = (rowLabels, previousLabels) => {
           const tr = element("tr");
           for (const [index, label] of rowLabels.entries()) {
-            const td = renderCell(label);
+            const changed = previousLabels && label !== previousLabels[index];
+            const td = renderCell(label, changed);
             tr.appendChild(td);
           }
           table.appendChild(tr);
@@ -438,8 +471,12 @@
           table.appendChild(tr);
         }
         for (const [index, row] of matrix.rows.entries()) {
-          const tr = renderRow(row);
-          const td = renderCell(matrix.values[index]);
+          const previousRow = previousMatrix && previousMatrix.rows[index];
+          const tr = renderRow(row, previousRow);
+          const changed =
+            previousMatrix &&
+            matrix.values[index] !== previousMatrix.values[index];
+          const td = renderCell(matrix.values[index], changed);
           tr.appendChild(td);
         }
         return table;
@@ -451,10 +488,10 @@
         contents.appendChild(renderParameters(state, config));
         contents.appendChild(renderTable(state, config));
         contents.appendChild(renderSolution(state, config));
-        for (const result of gaussEliminate(state.matrix)) {
-          contents.appendChild(renderMatrix(result));
+        const matrixResults = gaussEliminate(state.matrix);
+        for (const [index, result] of matrixResults.entries()) {
+          contents.appendChild(renderMatrix(result, matrixResults[index - 1]));
         }
-        console.log("pm debug state", state);
       }
 
       const CONFIG = {
