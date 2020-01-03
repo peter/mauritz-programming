@@ -181,20 +181,15 @@
         }[status];
       }
 
-      function element(name, attributes = {}, options = {}) {
-        const el = document.createElement(name);
-        for (const [key, value] of Object.entries(attributes)) {
+      function element(options = {}) {
+        const el = document.createElement(options.name);
+        for (const [key, value] of Object.entries(options.attributes || {})) {
           el.setAttribute(key, value);
         }
-        const children =
-          (Array.isArray(options) ? options : options.children) || [];
-        for (const child of children) {
+        for (const child of options.children || []) {
           el.appendChild(child);
         }
-        const innerHTML = !(typeof options === "object")
-          ? options
-          : options.innerHTML;
-        if (innerHTML) el.innerHTML = innerHTML;
+        if (options.text !== undefined) el.innerHTML = options.text.toString();
         return el;
       }
 
@@ -349,38 +344,51 @@
 
       function renderDescription(state, config) {
         const variables = orderedVariables(parseInt(state.nVariables));
-        return element(
-          "div",
-          {
+        return element({
+          name: "div",
+          attributes: {
             style: "margin-bottom: 10px"
           },
-          `Solve the table below for the variables ${variables.join(
+          text: `Solve the table below for the variables ${variables.join(
             ","
           )} where each variable is a unique integer value between 1 and ${
             state.nVariables
           }. This problem was taken from the book "Maths Puzzles Pad" by Sam Smith ("Roligt mattepyssel" in Swedish)`
-        );
+        });
       }
 
       function renderHeader() {
-        return element("h1", {}, "Math Problem - Variables in a Table");
+        return element({
+          name: "h1",
+          text: "Math Problem - Variables in a Table"
+        });
       }
 
       function renderParameters(state, config) {
         const contents = document.getElementById("contents");
-        const parameters = element("div", {
-          style: "margin-bottom: 10px"
+        const parameters = element({
+          name: "div",
+          attributes: {
+            style: "margin-bottom: 10px"
+          }
         });
         parameters.appendChild(
-          element("label", { for: "parameters" }, "Number of variables")
+          element({
+            name: "label",
+            attributes: { for: "parameters" },
+            text: "Number of variables"
+          })
         );
-        const select = element("select", { id: "parameters" });
+        const select = element({
+          name: "select",
+          attributes: { id: "parameters" }
+        });
         const updateNVariables = () => {
           initState(parseInt(select.value));
           render();
         };
         for (const value of config.nVariables.range) {
-          const option = element("option");
+          const option = element({ name: "option" });
           option.value = value;
           option.text = value;
           if (value === state.nVariables)
@@ -393,21 +401,28 @@
       }
 
       function renderTable(state, config) {
-        const table = element("table", {
-          class: "table",
-          id: "table",
-          border: "1",
-          cellspacing: "10",
-          cellpadding: "10"
+        const table = element({
+          name: "table",
+          attributes: {
+            class: "table",
+            id: "table",
+            border: "1",
+            cellspacing: "10",
+            cellpadding: "10"
+          }
         });
         const { rowStatuses, columnStatuses } = getSolutionStatuses(state);
         const renderCell = (label, status = null) => {
           const className = status && getSolutionStatusClass(status);
-          const td = element("td", { class: className }, label);
+          const td = element({
+            name: "td",
+            attributes: { class: className },
+            text: label
+          });
           return td;
         };
         const renderRow = (rowLabels, statuses = {}) => {
-          const tr = element("tr");
+          const tr = element({ name: "tr" });
           for (const [index, label] of rowLabels.entries()) {
             const td = renderCell(label, statuses[index]);
             tr.appendChild(td);
@@ -466,19 +481,33 @@
 
       function renderSolution(state, config) {
         const className = solutionRenderClass(state);
-        const solution = element("div", {
-          class: className,
-          style: `margin-top: 10px;`
+        const solution = element({
+          name: "div",
+          attributes: {
+            class: className,
+            style: `margin-top: 10px;`
+          }
         });
         const letters = orderedVariables(state.nVariables);
         for (const [index, letter] of letters.entries()) {
-          const div = element("div", {
-            style: `display: inline; margin-right: 10px`
+          const div = element({
+            name: "div",
+            attributes: {
+              style: `display: inline; margin-right: 10px`
+            }
           });
           const id = `letter-${index}`;
-          const label = element("label", { for: id }, `${letter}=`);
-          div.appendChild(label);
-          const input = element("input", { id, size: "2", class: className });
+          div.appendChild(
+            element({
+              name: "label",
+              attributes: { for: id },
+              text: `${letter}=`
+            })
+          );
+          const input = element({
+            name: "input",
+            attributes: { id, size: "2", class: className }
+          });
           if (state.solution[letter]) input.value = state.solution[letter];
           input.addEventListener("input", () =>
             updateSolution(state, letters[index], input.value)
@@ -490,32 +519,37 @@
       }
 
       function renderMatrixHeader() {
-        return element("h2", {}, "Linear Equations");
+        return element({ name: "h2", text: "Linear Equations" });
       }
 
       function renderMatrix(matrix, previousMatrix = null) {
-        const container = element("div");
+        const container = element({ name: "div" });
         if (matrix.description) {
-          container.appendChild(element("p", {}, matrix.description));
+          container.appendChild(
+            element({ name: "p", text: matrix.description })
+          );
         }
-        const table = element("table", {
-          class: "table",
-          id: "matrix",
-          border: "1",
-          cellspacing: "10",
-          cellpadding: "10",
-          style: "margin-top: 20px"
+        const table = element({
+          name: "table",
+          attributes: {
+            class: "table",
+            id: "matrix",
+            border: "1",
+            cellspacing: "10",
+            cellpadding: "10",
+            style: "margin-top: 20px"
+          }
         });
         container.appendChild(table);
         const renderCell = (value, changed) => {
           const attributes = changed
             ? { style: "background-color: lightgray" }
             : {};
-          const td = element("td", attributes, round(value));
+          const td = element({ name: "td", attributes, text: round(value) });
           return td;
         };
         const renderRow = (rowLabels, previousLabels) => {
-          const tr = element("tr");
+          const tr = element({ name: "tr" });
           for (const [index, label] of rowLabels.entries()) {
             const changed = previousLabels && label !== previousLabels[index];
             const td = renderCell(label, changed);
@@ -548,27 +582,28 @@
           : isReduced
           ? "bg-warning"
           : "bg-danger";
-        const container = element("div", {
-          style: `margin-top: 20px`,
-          class: className
+        const container = element({
+          name: "div",
+          attributes: {
+            style: `margin-top: 20px`,
+            class: className
+          }
         });
         container.appendChild(
-          element(
-            "div",
-            {},
-            isReduced
+          element({
+            name: "div",
+            text: isReduced
               ? "Matrix is in reduced row echelon form"
               : "Matrix is not in reduced echelon form"
-          )
+          })
         );
         container.appendChild(
-          element(
-            "div",
-            {},
-            isCorrect
+          element({
+            name: "div",
+            text: isCorrect
               ? "Variable values are correct according to the row and columns sums in the table"
               : "Correct variable values were not found by gaussian elimination"
-          )
+          })
         );
         return container;
       }
@@ -576,17 +611,18 @@
       function renderContents(state, config) {
         const contents = document.getElementById("contents");
         contents.innerHTML = "";
-        contents.appendChild(renderHeader());
-        contents.appendChild(renderParameters(state, config));
-        contents.appendChild(renderDescription(state, config));
-        contents.appendChild(renderTable(state, config));
-        contents.appendChild(renderSolution(state, config));
-        contents.appendChild(renderMatrixHeader());
+        const add = el => contents.appendChild(el);
+        add(renderHeader());
+        add(renderParameters(state, config));
+        add(renderDescription(state, config));
+        add(renderTable(state, config));
+        add(renderSolution(state, config));
+        add(renderMatrixHeader());
         const gauss = gaussEliminate(state.matrix);
         for (const [index, result] of gauss.results.entries()) {
-          contents.appendChild(renderMatrix(result, gauss.results[index - 1]));
+          add(renderMatrix(result, gauss.results[index - 1]));
         }
-        contents.appendChild(renderMatrixStatus(state, gauss.result));
+        add(renderMatrixStatus(state, gauss.result));
       }
 
       const CONFIG = {
