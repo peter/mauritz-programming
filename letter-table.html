@@ -181,11 +181,20 @@
         }[status];
       }
 
-      function element(name, attributes = {}) {
+      function element(name, attributes = {}, options = {}) {
         const el = document.createElement(name);
         for (const [key, value] of Object.entries(attributes)) {
           el.setAttribute(key, value);
         }
+        const children =
+          (Array.isArray(options) ? options : options.children) || [];
+        for (const child of children) {
+          el.appendChild(child);
+        }
+        const innerHTML = !(typeof options === "object")
+          ? options
+          : options.innerHTML;
+        if (innerHTML) el.innerHTML = innerHTML;
         return el;
       }
 
@@ -340,21 +349,21 @@
 
       function renderDescription(state, config) {
         const variables = orderedVariables(parseInt(state.nVariables));
-        const div = element("div", {
-          style: "margin-bottom: 10px"
-        });
-        div.innerHTML = `Solve the table below for the variables ${variables.join(
-          ","
-        )} where each variable is a unique integer value between 1 and ${
-          state.nVariables
-        }. This problem was taken from the book "Maths Puzzles Pad" by Sam Smith ("Roligt mattepyssel" in Swedish)`;
-        return div;
+        return element(
+          "div",
+          {
+            style: "margin-bottom: 10px"
+          },
+          `Solve the table below for the variables ${variables.join(
+            ","
+          )} where each variable is a unique integer value between 1 and ${
+            state.nVariables
+          }. This problem was taken from the book "Maths Puzzles Pad" by Sam Smith ("Roligt mattepyssel" in Swedish)`
+        );
       }
 
       function renderHeader() {
-        const header = element("h1");
-        header.innerHTML = "Math Problem - Variables in a Table";
-        return header;
+        return element("h1", {}, "Math Problem - Variables in a Table");
       }
 
       function renderParameters(state, config) {
@@ -362,9 +371,9 @@
         const parameters = element("div", {
           style: "margin-bottom: 10px"
         });
-        const label = element("label", { for: "parameters" });
-        label.innerHTML = "Number of variables";
-        parameters.appendChild(label);
+        parameters.appendChild(
+          element("label", { for: "parameters" }, "Number of variables")
+        );
         const select = element("select", { id: "parameters" });
         const updateNVariables = () => {
           initState(parseInt(select.value));
@@ -394,8 +403,7 @@
         const { rowStatuses, columnStatuses } = getSolutionStatuses(state);
         const renderCell = (label, status = null) => {
           const className = status && getSolutionStatusClass(status);
-          const td = element("td", { class: className });
-          td.innerHTML = label;
+          const td = element("td", { class: className }, label);
           return td;
         };
         const renderRow = (rowLabels, statuses = {}) => {
@@ -468,8 +476,7 @@
             style: `display: inline; margin-right: 10px`
           });
           const id = `letter-${index}`;
-          const label = element("label", { for: id });
-          label.innerHTML = `${letter}=`;
+          const label = element("label", { for: id }, `${letter}=`);
           div.appendChild(label);
           const input = element("input", { id, size: "2", class: className });
           if (state.solution[letter]) input.value = state.solution[letter];
@@ -483,17 +490,13 @@
       }
 
       function renderMatrixHeader() {
-        const header = element("h2");
-        header.innerHTML = "Linear Equations";
-        return header;
+        return element("h2", {}, "Linear Equations");
       }
 
       function renderMatrix(matrix, previousMatrix = null) {
         const container = element("div");
         if (matrix.description) {
-          const description = element("p");
-          description.innerHTML = matrix.description;
-          container.appendChild(description);
+          container.appendChild(element("p", {}, matrix.description));
         }
         const table = element("table", {
           class: "table",
@@ -508,8 +511,7 @@
           const attributes = changed
             ? { style: "background-color: lightgray" }
             : {};
-          const td = element("td", attributes);
-          td.innerHTML = round(value);
+          const td = element("td", attributes, round(value));
           return td;
         };
         const renderRow = (rowLabels, previousLabels) => {
@@ -550,16 +552,24 @@
           style: `margin-top: 20px`,
           class: className
         });
-        const reduced = element("div");
-        reduced.innerHTML = isReduced
-          ? "Matrix is in reduced row echelon form"
-          : "Matrix is not in reduced echelon form";
-        container.appendChild(reduced);
-        const correct = element("div");
-        correct.innerHTML = isCorrect
-          ? "Variable values are correct according to the row and columns sums in the table"
-          : "Correct variable values were not found by gaussian elimination";
-        container.appendChild(correct);
+        container.appendChild(
+          element(
+            "div",
+            {},
+            isReduced
+              ? "Matrix is in reduced row echelon form"
+              : "Matrix is not in reduced echelon form"
+          )
+        );
+        container.appendChild(
+          element(
+            "div",
+            {},
+            isCorrect
+              ? "Variable values are correct according to the row and columns sums in the table"
+              : "Correct variable values were not found by gaussian elimination"
+          )
+        );
         return container;
       }
 
