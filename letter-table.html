@@ -182,7 +182,15 @@
       }
 
       function element(options = {}) {
-        const el = document.createElement(options.name);
+        let el =
+          options.attributes &&
+          options.attributes.id &&
+          document.getElementById(options.attributes.id);
+        if (el) {
+          el.innerHTML = "";
+        } else {
+          el = document.createElement(options.name);
+        }
         for (const [key, value] of Object.entries(options.attributes || {})) {
           el.setAttribute(key, value);
         }
@@ -385,7 +393,7 @@
         });
         const updateNVariables = () => {
           initState(parseInt(select.value));
-          render();
+          renderAll();
         };
         for (const value of config.nVariables.range) {
           const option = element({ name: "option" });
@@ -400,7 +408,7 @@
         return parameters;
       }
 
-      function renderTable(state, config) {
+      function renderTable(state) {
         const table = element({
           name: "table",
           attributes: {
@@ -463,7 +471,8 @@
         if (isComplete && isValidSolution(state)) {
           const variables = getSolutionVariables(state.solution);
         }
-        render();
+        renderTable(state);
+        renderSolutionStatus(state);
       }
 
       function solutionRenderClass(state) {
@@ -479,12 +488,23 @@
         return getSolutionStatusClass(getStatus());
       }
 
-      function renderSolution(state, config) {
+      function renderSolutionStatus(state) {
         const className = solutionRenderClass(state);
+        return element({
+          name: "div",
+          attributes: {
+            id: "solution-status",
+            class: className,
+            style: `margin-top: 10px;`
+          },
+          text: "Solution:"
+        });
+      }
+
+      function renderSolution(state, config) {
         const solution = element({
           name: "div",
           attributes: {
-            class: className,
             style: `margin-top: 10px;`
           }
         });
@@ -506,7 +526,7 @@
           );
           const input = element({
             name: "input",
-            attributes: { id, size: "2", class: className }
+            attributes: { id, size: "2" }
           });
           if (state.solution[letter]) input.value = state.solution[letter];
           input.addEventListener("input", () =>
@@ -533,7 +553,6 @@
           name: "table",
           attributes: {
             class: "table",
-            id: "matrix",
             border: "1",
             cellspacing: "10",
             cellpadding: "10",
@@ -608,14 +627,17 @@
         return container;
       }
 
-      function renderContents(state, config) {
-        const contents = document.getElementById("contents");
-        contents.innerHTML = "";
+      function renderAllContents(state, config) {
+        const contents = element({
+          name: "div",
+          attributes: { id: "contents" }
+        });
         const add = el => contents.appendChild(el);
         add(renderHeader());
         add(renderParameters(state, config));
         add(renderDescription(state, config));
-        add(renderTable(state, config));
+        add(renderTable(state));
+        add(renderSolutionStatus(state));
         add(renderSolution(state, config));
         add(renderMatrixHeader());
         const gauss = gaussEliminate(state.matrix);
@@ -633,13 +655,13 @@
       };
       let STATE = {};
 
-      function render() {
-        renderContents(STATE, CONFIG);
+      function renderAll() {
+        renderAllContents(STATE, CONFIG);
       }
 
       window.addEventListener("load", () => {
         initState(CONFIG.nVariables.default);
-        render();
+        renderAll();
       });
     </script>
 
