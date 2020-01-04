@@ -535,7 +535,7 @@
           );
           const input = element({
             name: "input",
-            attributes: { id, size: "2" }
+            attributes: { id, size: "2", type: "number" }
           });
           if (state.solution[letter]) input.value = state.solution[letter];
           input.addEventListener("input", () =>
