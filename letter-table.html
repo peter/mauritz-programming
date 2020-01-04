@@ -25,6 +25,17 @@
         }, {});
       }
 
+      function get(obj, path) {
+        if (!obj) return undefined;
+        let result = obj;
+        const keys = Array.isArray(path) ? path : path.split(".");
+        for (let key of keys) {
+          result = result && result[key];
+          if (result === undefined) break;
+        }
+        return result;
+      }
+
       function max(list) {
         return list.reduce((acc, value) => (acc > value ? acc : value));
       }
@@ -182,10 +193,8 @@
       }
 
       function element(options = {}) {
-        let el =
-          options.attributes &&
-          options.attributes.id &&
-          document.getElementById(options.attributes.id);
+        const id = get(options, "attributes.id");
+        let el = id && document.getElementById(id);
         if (el) {
           el.innerHTML = "";
         } else {
