@@ -514,6 +514,7 @@
         const solution = element({
           name: "div",
           attributes: {
+            class: "form-row",
             style: `margin-top: 10px;`
           }
         });
@@ -535,6 +536,7 @@
           );
           const input = element({
             name: "input",
+            class: "form-control",
             attributes: { id, size: "2", type: "number" }
           });
           if (state.solution[letter]) input.value = state.solution[letter];
